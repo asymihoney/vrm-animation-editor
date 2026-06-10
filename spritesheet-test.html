@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Mascot Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fff;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .mascot {
+            position: fixed;
+            bottom: 0px;
+            left: -300px;
+            background-image: url('spritesheet4.png');
+            background-repeat: no-repeat;
+            will-change: transform;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mascot" id="mascot"></div>
+
+    <script>
+        const COLS = 10;
+        const TOTAL_FRAMES = 96;
+        const FPS = 24;
+
+        const FRAME_W = 1496;
+        const FRAME_H = 745;
+        const SCALE = 1.0; // ← change this one value to resize (1.0 = original size)
+
+        const DW = Math.round(FRAME_W * SCALE);
+        const DH = Math.round(FRAME_H * SCALE);
+
+        const mascot = document.getElementById('mascot');
+        mascot.style.width = DW + 'px';
+        mascot.style.height = DH + 'px';
+        const ROWS = Math.ceil(TOTAL_FRAMES / COLS);
+        mascot.style.backgroundSize = `${DW * COLS}px ${DH * ROWS}px`;
+
+        let frame = 0;
+        let lastTime = 0;
+        const interval = 1000 / FPS;
+
+        function tick(timestamp) {
+            if (timestamp - lastTime >= interval) {
+                const col = frame % COLS;
+                const row = Math.floor(frame / COLS);
+                mascot.style.backgroundPosition = `-${col * DW}px -${row * DH}px`;
+                frame = (frame + 1) % TOTAL_FRAMES;
+                lastTime = timestamp;
+            }
+            requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+    </script>
+</body>
+
+</html>

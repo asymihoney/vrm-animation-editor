@@ -1,0 +1,2872 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRM Animator - Pose & Keyframe Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            background: #2d2d2d;
+            padding: 8px 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            border-bottom: 2px solid #3d3d3d;
+        }
+
+        .toolbar-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        .btn {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #3a8eef;
+        }
+
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn-secondary {
+            background: #555;
+        }
+
+        .btn-secondary:hover {
+            background: #666;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-success {
+            background: #27ae60;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .divider {
+            width: 1px;
+            height: 24px;
+            background: #555;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Left Sidebar - Bone Tree */
+        .sidebar-left {
+            width: 250px;
+            background: #252525;
+            border-right: 2px solid #3d3d3d;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .bone-tree {
+            font-size: 13px;
+        }
+
+        .bone-item {
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 2px 0;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .bone-item:hover {
+            background: #333;
+        }
+
+        .bone-item.selected {
+            background: #4a9eff;
+            color: white;
+        }
+
+        .bone-item.has-keyframe {
+            border-left: 3px solid #27ae60;
+        }
+
+        .bone-indent {
+            margin-left: 16px;
+        }
+
+        /* Viewport */
+        .viewport {
+            flex: 1;
+            background: #1a1a1a;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .viewport-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .viewport-overlay div {
+            margin: 4px 0;
+        }
+
+        /* Right Sidebar - Properties */
+        .sidebar-right {
+            width: 280px;
+            background: #252525;
+            border-left: 2px solid #3d3d3d;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .property-input {
+            width: 100%;
+            background: #333;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .property-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .property-row input {
+            flex: 1;
+        }
+
+        .property-row label {
+            min-width: 60px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Timeline */
+        .timeline-container {
+            height: 200px;
+            background: #252525;
+            border-top: 2px solid #3d3d3d;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-controls {
+            padding: 8px 12px;
+            background: #2d2d2d;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 1px solid #3d3d3d;
+        }
+
+        .playhead-time {
+            background: #333;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .timeline-viewport {
+            flex: 1;
+            position: relative;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .timeline-canvas-container {
+            position: relative;
+            height: 100%;
+            min-width: 100%;
+        }
+
+        #timelineCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Preset Library */
+        .preset-library {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .preset-item {
+            aspect-ratio: 1;
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            text-align: center;
+            padding: 6px;
+            transition: all 0.2s;
+        }
+
+        .preset-item:hover {
+            background: #444;
+            border-color: #4a9eff;
+        }
+
+        .preset-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333;
+            border-top-color: #4a9eff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: auto;
+            width: 90%;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .code-output {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre;
+            margin: 12px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .tab-btn {
+            background: #333;
+            border: none;
+            color: #999;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .tab-btn.active {
+            background: #4a9eff;
+            color: white;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Keyboard Shortcuts Helper */
+        .shortcuts-hint {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            pointer-events: none;
+        }
+
+        .shortcuts-hint div {
+            margin: 2px 0;
+        }
+
+        .shortcuts-hint kbd {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-switch input {
+            display: none;
+        }
+
+        .toggle-slider {
+            width: 40px;
+            height: 20px;
+            background: #555;
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .toggle-slider::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: #4a9eff;
+        }
+
+        .toggle-switch input:checked+.toggle-slider::after {
+            transform: translateX(20px);
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #999;
+            font-style: italic;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-row">
+                <button class="btn" id="loadVrmBtn">
+                    📁 Load VRM
+                </button>
+                <input type="file" id="vrmFileInput" accept=".vrm" style="display: none;">
+
+                <div class="divider"></div>
+
+                <button class="btn" id="playBtn" disabled>▶️ Play</button>
+                <button class="btn btn-secondary" id="stopBtn" disabled>⏹️ Stop</button>
+                <button class="btn btn-secondary" id="prevFrameBtn" disabled>⏮️</button>
+                <button class="btn btn-secondary" id="nextFrameBtn" disabled>⏭️</button>
+
+                <div class="divider"></div>
+
+                <button class="btn btn-success" id="addKeyframeBtn" disabled>🔑 Add Keyframe</button>
+                <button class="btn btn-danger" id="deleteKeyframeBtn" disabled>❌ Delete Keyframe</button>
+
+                <div class="divider"></div>
+
+                <button class="btn" id="resetPoseBtn" disabled>🔄 Reset Pose</button>
+                <button class="btn" id="mirrorPoseBtn" disabled>🪞 Mirror Pose</button>
+
+                <div class="divider"></div>
+
+                <button class="btn" id="exportCodeBtn" disabled>💾 Export Code</button>
+
+                <div class="divider"></div>
+
+                <button class="btn btn-secondary" id="undoBtn" disabled>↶ Undo</button>
+                <button class="btn btn-secondary" id="redoBtn" disabled>↷ Redo</button>
+
+            </div>
+            <div class="toolbar-row">
+                <select id="captureFps"
+                    style="background:#333;color:#e0e0e0;border:1px solid #444;padding:6px 8px;border-radius:6px;font-size:13px;">
+                    <option value="12">12 fps</option>
+                    <option value="24">24 fps</option>
+                    <option value="30" selected>30 fps</option>
+                </select>
+                <button class="btn btn-record" id="autoRecordBtn" disabled>⏺ Auto Record</button>
+                <button class="btn btn-success" id="exportSheetBtn" disabled style="display:none">⬇️ Export Sheet
+                    (0)</button>
+                <button class="btn btn-danger" id="clearFramesBtn" disabled style="display:none">🗑️ Clear</button>
+                <div class="divider"></div>
+                <label class="toggle-switch" style="font-size:12px;">
+                    <input type="checkbox" id="gridToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span>Grid</span>
+                </label>
+                <label class="toggle-switch" style="font-size:12px;">
+                    <input type="checkbox" id="groundToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span>Ground</span>
+                </label>
+                <label class="toggle-switch" style="font-size:12px;">
+                    <input type="checkbox" id="lookAtToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span>Look at cam</span>
+                </label>
+                <div class="divider"></div>
+                <span style="color:#999;font-size:13px;">BG:</span>
+                <div style="display:flex;gap:4px;align-items:center;">
+                    <div style="width:20px;height:20px;border-radius:50%;background:#00b140;cursor:pointer;border:2px solid transparent;"
+                        title="Chroma Green" onclick="setBgColor('#00b140')"></div>
+                    <div style="width:20px;height:20px;border-radius:50%;background:#ff00ff;cursor:pointer;border:2px solid transparent;"
+                        title="Magenta" onclick="setBgColor('#ff00ff')"></div>
+                    <div style="width:20px;height:20px;border-radius:50%;background:#1a1a1a;cursor:pointer;border:2px solid #555;"
+                        title="Default Dark" onclick="setBgColor('#1a1a1a')"></div>
+                    <input type="color" id="bgColorPicker" value="#1a1a1a"
+                        style="width:28px;height:28px;padding:0;border:none;cursor:pointer;border-radius:4px;background:none;">
+                </div>
+                <label class="toggle-switch" style="font-size:12px;">
+                    <input type="checkbox" id="chromaKeyToggle">
+                    <span class="toggle-slider"></span>
+                    <span>Remove BG on export</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar - Bone Tree -->
+            <div class="sidebar-left">
+                <div class="sidebar-title">Bone Hierarchy</div>
+                <div class="bone-tree" id="boneTree">
+                    <div class="info-text">Load a VRM model to see bone hierarchy</div>
+                </div>
+            </div>
+
+            <!-- Viewport -->
+            <div class="viewport">
+                <canvas id="canvas"></canvas>
+                <div class="viewport-overlay">
+                    <div>🎥 Camera: Orbit to rotate, Scroll to zoom</div>
+                    <div id="selectedBoneInfo">Selected: None</div>
+                    <div id="fpsCounter">FPS: 0</div>
+                </div>
+                <div class="shortcuts-hint">
+                    <div><kbd>Space</kbd> Play/Pause</div>
+                    <div><kbd>←→</kbd> Navigate Frames</div>
+                    <div><kbd>K</kbd> Add Keyframe</div>
+                    <div><kbd>Del</kbd> Delete Keyframe</div>
+                    <div><kbd>Ctrl+Z</kbd> Undo</div>
+                    <div><kbd>Ctrl+Y</kbd> Redo</div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar - Properties -->
+            <div class="sidebar-right">
+                <div class="sidebar-title">Properties</div>
+
+                <div class="property-group">
+                    <label class="property-label">Selected Bone</label>
+                    <div class="property-input" id="selectedBoneName">None</div>
+                </div>
+
+                <div class="property-group" id="transformGroup" style="display: none;">
+                    <label class="property-label">Rotation (Degrees)</label>
+                    <div class="property-row">
+                        <label>X:</label>
+                        <input type="number" class="property-input" id="rotX" step="1" value="0">
+                    </div>
+                    <div class="property-row">
+                        <label>Y:</label>
+                        <input type="number" class="property-input" id="rotY" step="1" value="0">
+                    </div>
+                    <div class="property-row">
+                        <label>Z:</label>
+                        <input type="number" class="property-input" id="rotZ" step="1" value="0">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">IK Helper</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ikToggle">
+                        <span class="toggle-slider"></span>
+                        <span>Enable IK</span>
+                    </label>
+                    <div class="info-text">Inverse Kinematics for natural limb movement</div>
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Onion Skinning</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="onionSkinToggle">
+                        <span class="toggle-slider"></span>
+                        <span>Show Ghost Frames</span>
+                    </label>
+                    <div class="property-row" style="margin-top: 8px;">
+                        <label>Opacity:</label>
+                        <input type="range" class="property-input" id="onionSkinOpacity" min="0" max="100" value="30">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Camera Presets</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;"
+                            id="camFront">Front</button>
+                        <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;"
+                            id="camSide">Side</button>
+                        <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;"
+                            id="cam3Quarter">3/4</button>
+                        <button class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;"
+                            id="camTop">Top</button>
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Pose Presets</label>
+                    <div class="preset-library">
+                        <div class="preset-item" data-preset="tpose">
+                            <div class="preset-icon">🧍</div>
+                            <div>T-Pose</div>
+                        </div>
+                        <div class="preset-item" data-preset="apose">
+                            <div class="preset-icon">🙆</div>
+                            <div>A-Pose</div>
+                        </div>
+                        <div class="preset-item" data-preset="idle">
+                            <div class="preset-icon">🧘</div>
+                            <div>Idle</div>
+                        </div>
+                        <div class="preset-item" data-preset="wave">
+                            <div class="preset-icon">👋</div>
+                            <div>Wave</div>
+                        </div>
+                        <div class="preset-item" data-preset="sit">
+                            <div class="preset-icon">🪑</div>
+                            <div>Sit</div>
+                        </div>
+                        <div class="preset-item" data-preset="jump">
+                            <div class="preset-icon">🦘</div>
+                            <div>Jump</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EXPRESSIONS CONTROL -->
+                <div class="property-group">
+                    <div class="sidebar-title">Face Expressions</div>
+
+                    <!-- Quick Presets -->
+                    <div class="property-label">Quick Presets</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('happy')"
+                            style="font-size: 11px; padding: 6px;">😊 Happy</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('angry')"
+                            style="font-size: 11px; padding: 6px;">😠 Angry</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('sad')"
+                            style="font-size: 11px; padding: 6px;">😢 Sad</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('relaxed')"
+                            style="font-size: 11px; padding: 6px;">😌 Relaxed</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('surprised')"
+                            style="font-size: 11px; padding: 6px;">😲 Surprised</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('aa')"
+                            style="font-size: 11px; padding: 6px;">😮 Aa</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('ih')"
+                            style="font-size: 11px; padding: 6px;">😁 Ih</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('ou')"
+                            style="font-size: 11px; padding: 6px;">😯 Ou</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('ee')"
+                            style="font-size: 11px; padding: 6px;">😬 Ee</button>
+                        <button class="btn btn-secondary" onclick="applyExpressionPreset('oh')"
+                            style="font-size: 11px; padding: 6px;">😲 Oh</button>
+                    </div>
+
+                    <button class="btn btn-danger" onclick="resetAllExpressions()"
+                        style="width: 100%; font-size: 11px; padding: 6px; margin-bottom: 12px;">
+                        🔄 Reset All Expressions
+                    </button>
+
+                    <!-- Manual Blend Shape Sliders -->
+                    <div class="property-label">Manual Control (All Blend Shapes)</div>
+                    <div id="blendShapesList"
+                        style="max-height: 250px; overflow-y: auto; border: 1px solid #3d3d3d; border-radius: 4px; padding: 8px; background: #1a1a1a;">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- HAND POSES CONTROL -->
+                <div class="property-group">
+                    <div class="sidebar-title">Hand Poses</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <button class="btn btn-secondary" onclick="applyHandPose('left', 'relaxed')"
+                            style="flex: 1; font-size: 11px;">L: Relaxed</button>
+                        <button class="btn btn-secondary" onclick="applyHandPose('right', 'relaxed')"
+                            style="flex: 1; font-size: 11px;">R: Relaxed</button>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <button class="btn btn-secondary" onclick="applyHandPose('left', 'fist')"
+                            style="flex: 1; font-size: 11px;">L: Fist</button>
+                        <button class="btn btn-secondary" onclick="applyHandPose('right', 'fist')"
+                            style="flex: 1; font-size: 11px;">R: Fist</button>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <button class="btn btn-secondary" onclick="applyHandPose('left', 'point')"
+                            style="flex: 1; font-size: 11px;">L: Point</button>
+                        <button class="btn btn-secondary" onclick="applyHandPose('right', 'point')"
+                            style="flex: 1; font-size: 11px;">R: Point</button>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <button class="btn btn-secondary" onclick="applyHandPose('left', 'victory')"
+                            style="flex: 1; font-size: 11px;">L: Victory</button>
+                        <button class="btn btn-secondary" onclick="applyHandPose('right', 'victory')"
+                            style="flex: 1; font-size: 11px;">R: Victory</button>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" onclick="applyHandPose('left', 'thumbsUp')"
+                            style="flex: 1; font-size: 11px;">L: Thumbs</button>
+                        <button class="btn btn-secondary" onclick="applyHandPose('right', 'thumbsUp')"
+                            style="flex: 1; font-size: 11px;">R: Thumbs</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-container">
+            <div class="timeline-controls">
+                <div class="playhead-time" id="playheadTime">0.00s / 5.00s</div>
+                <div class="divider"></div>
+                <label class="toggle-switch" style="font-size: 12px;">
+                    <input type="checkbox" id="loopToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span>Loop</span>
+                </label>
+                <div class="divider"></div>
+                <label style="font-size: 12px; color: #999;">Speed:</label>
+                <input type="range" id="speedSlider" min="25" max="200" value="100" step="25" style="width: 100px;">
+                <span id="speedValue" style="font-size: 12px;">100%</span>
+            </div>
+            <div class="timeline-viewport">
+                <div class="timeline-canvas-container">
+                    <canvas id="timelineCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div>Loading VRM Model...</div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal hidden" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Export Animation Code</span>
+                <button class="modal-close" id="closeExportModal">×</button>
+            </div>
+
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="threejs">Three.js</button>
+                <button class="tab-btn" data-tab="react">React Component</button>
+                <button class="tab-btn" data-tab="json">JSON Data</button>
+            </div>
+
+            <div class="code-output" id="codeOutput"></div>
+
+            <button class="btn" id="copyCodeBtn" style="width: 100%; margin-top: 12px;">
+                📋 Copy to Clipboard
+            </button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/",
+            "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.0.0/lib/three-vrm.module.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+        // ==================== APPLICATION STATE ====================
+        window.state = {
+            vrm: null,
+            selectedBone: null,
+            currentTime: 0,
+            duration: 5.0,
+            fps: 30,
+            isPlaying: false,
+            playbackSpeed: 1.0,
+            loop: true,
+            keyframes: [], // { time: number, bones: { [boneName]: { rotation: [x,y,z] } } }
+            undoStack: [],
+            redoStack: [],
+            ikEnabled: false,
+            onionSkinEnabled: false,
+            onionSkinOpacity: 0.3,
+            boneRotations: new Map(), // Store current rotations
+        };
+
+        // ==================== THREE.JS SETUP ====================
+        const canvas = document.getElementById('canvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            canvas.clientWidth / canvas.clientHeight,
+            0.1,
+            100
+        );
+        camera.position.set(0, 1.4, 2.5);
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true
+        });
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(1, 2, 3);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 20;
+        directionalLight.shadow.bias = -0.001;
+        directionalLight.shadow.normalBias = 0.02;
+
+        scene.add(directionalLight);
+
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.4);
+        backLight.position.set(-1, 1, -2);
+        scene.add(backLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        fillLight.position.set(-1, 0, 4);
+        scene.add(fillLight);
+
+        // Grid
+        const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+        scene.add(gridHelper);
+
+        const groundGeo = new THREE.PlaneGeometry(10, 10);
+        const groundMat = new THREE.ShadowMaterial({ opacity: 0.3 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        document.getElementById('gridToggle').addEventListener('change', (e) => {
+            gridHelper.visible = e.target.checked;
+        });
+
+        document.getElementById('groundToggle').addEventListener('change', (e) => {
+            ground.visible = e.target.checked;
+        });
+
+        window.setBgColor = function (hex) {
+            scene.background = new THREE.Color(hex);
+            document.getElementById('bgColorPicker').value = hex;
+        };
+
+        document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+            scene.background = new THREE.Color(e.target.value);
+        });
+
+        // Orbit Controls
+        const controls = new OrbitControls(camera, canvas);
+        controls.target.set(0, 1, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.update();
+
+        // ==================== VRM LOADER ====================
+        const loader = new GLTFLoader();
+        loader.register((parser) => {
+            return new VRMLoaderPlugin(parser);
+        });
+
+        async function loadVRM(file) {
+            showLoading(true);
+
+            try {
+                const url = URL.createObjectURL(file);
+                const gltf = await loader.loadAsync(url);
+                URL.revokeObjectURL(url);
+
+                if (state.vrm) {
+                    scene.remove(state.vrm.scene);
+                    VRMUtils.deepDispose(state.vrm.scene);
+                }
+
+                const vrm = gltf.userData.vrm;
+                state.vrm = vrm;
+
+                // Setup VRM
+                VRMUtils.rotateVRM0(vrm);
+                scene.add(vrm.scene);
+                vrm.scene.traverse((obj) => {
+                    if (obj.isMesh) {
+                        obj.castShadow = true;
+                        obj.receiveShadow = true;
+                        if (obj.material) {
+                            obj.material.shadowSide = THREE.FrontSide;
+                        }
+                    }
+                });
+
+                // Store initial bone rotations
+                state.boneRotations.clear();
+                if (vrm.humanoid) {
+                    const humanBones = vrm.humanoid.humanBones;
+                    Object.keys(humanBones).forEach(boneName => {
+                        const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                        if (bone) {
+                            state.boneRotations.set(boneName, {
+                                x: bone.rotation.x,
+                                y: bone.rotation.y,
+                                z: bone.rotation.z
+                            });
+                        }
+                    });
+                }
+
+                // Initialize timeline
+                state.keyframes = [];
+                state.currentTime = 0;
+                updateBoneTree();
+                // Populate blend shapes list
+                populateBlendShapes();
+                addKeyframeAtCurrentTime();
+
+                // Update UI
+                updateTimeline();
+                enableControls();
+
+                console.log('VRM loaded successfully:', vrm);
+            } catch (error) {
+                console.error('Error loading VRM:', error);
+                alert('Failed to load VRM file. Please make sure it\'s a valid VRM file.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ==================== BONE TREE UI ====================
+        function updateBoneTree() {
+            const boneTree = document.getElementById('boneTree');
+            boneTree.innerHTML = '';
+
+            if (!state.vrm || !state.vrm.humanoid) {
+                boneTree.innerHTML = '<div class="info-text">No VRM model loaded</div>';
+                return;
+            }
+
+            const humanBones = state.vrm.humanoid.humanBones;
+            const boneHierarchy = {
+                'hips': ['spine', 'leftUpperLeg', 'rightUpperLeg'],
+                'spine': ['chest'],
+                'chest': ['neck', 'leftShoulder', 'rightShoulder'],
+                'neck': ['head'],
+                'leftShoulder': ['leftUpperArm'],
+                'leftUpperArm': ['leftLowerArm'],
+                'leftLowerArm': ['leftHand'],
+                'rightShoulder': ['rightUpperArm'],
+                'rightUpperArm': ['rightLowerArm'],
+                'rightLowerArm': ['rightHand'],
+                'leftUpperLeg': ['leftLowerLeg'],
+                'leftLowerLeg': ['leftFoot'],
+                'rightUpperLeg': ['rightLowerLeg'],
+                'rightLowerLeg': ['rightFoot']
+            };
+
+            function createBoneElement(boneName, level = 0) {
+                if (!state.vrm.humanoid.getNormalizedBoneNode(boneName)) return null;
+
+                const hasKeyframe = hasKeyframeAtCurrentTime(boneName);
+                const div = document.createElement('div');
+                div.className = `bone-item ${hasKeyframe ? 'has-keyframe' : ''}`;
+                div.style.marginLeft = `${level * 16}px`;
+                div.textContent = boneName;
+                div.dataset.bone = boneName;
+
+                div.addEventListener('click', () => selectBone(boneName));
+
+                boneTree.appendChild(div);
+
+                if (boneHierarchy[boneName]) {
+                    boneHierarchy[boneName].forEach(childName => {
+                        createBoneElement(childName, level + 1);
+                    });
+                }
+
+                return div;
+            }
+
+            createBoneElement('hips', 0);
+        }
+
+        function selectBone(boneName) {
+            state.selectedBone = boneName;
+
+            // Update UI
+            document.querySelectorAll('.bone-item').forEach(el => {
+                el.classList.remove('selected');
+                if (el.dataset.bone === boneName) {
+                    el.classList.add('selected');
+                }
+            });
+
+            document.getElementById('selectedBoneName').textContent = boneName;
+            document.getElementById('selectedBoneInfo').textContent = `Selected: ${boneName}`;
+            document.getElementById('transformGroup').style.display = 'block';
+
+            // Update rotation inputs
+            updateRotationInputs();
+        }
+
+        function updateRotationInputs() {
+            if (!state.selectedBone || !state.vrm) return;
+
+            const node = state.vrm.humanoid.getNormalizedBoneNode(state.selectedBone);
+            if (!node) return;
+
+            const rotation = node.rotation;
+            document.getElementById('rotX').value = THREE.MathUtils.radToDeg(rotation.x).toFixed(1);
+            document.getElementById('rotY').value = THREE.MathUtils.radToDeg(rotation.y).toFixed(1);
+            document.getElementById('rotZ').value = THREE.MathUtils.radToDeg(rotation.z).toFixed(1);
+        }
+
+        // ==================== KEYFRAME SYSTEM ====================
+        function addKeyframeAtCurrentTime() {
+            if (!state.vrm) return;
+
+            // Capture current pose
+            const bones = {};
+            const humanBones = state.vrm.humanoid.humanBones;
+
+            Object.keys(humanBones).forEach(boneName => {
+                const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                if (bone) {
+                    bones[boneName] = {
+                        rotation: [
+                            bone.rotation.x,
+                            bone.rotation.y,
+                            bone.rotation.z
+                        ]
+                    };
+                }
+            });
+
+            const expressions = {};
+            if (state.vrm.expressionManager) {
+                Object.keys(state.vrm.expressionManager.expressionMap).forEach(name => {
+                    expressions[name] = state.vrm.expressionManager.getValue(name) || 0;
+                });
+            }
+
+            // Check if keyframe exists at current time
+            const existingIndex = state.keyframes.findIndex(
+                kf => Math.abs(kf.time - state.currentTime) < 0.01
+            );
+
+            const keyframe = { time: state.currentTime, bones, expressions };
+
+            if (existingIndex >= 0) {
+                // Update existing keyframe
+                saveToUndoStack();
+                state.keyframes[existingIndex] = keyframe;
+            } else {
+                // Add new keyframe
+                saveToUndoStack();
+                state.keyframes.push(keyframe);
+                state.keyframes.sort((a, b) => a.time - b.time);
+            }
+
+            updateTimeline();
+            updateBoneTree();
+            console.log('Keyframe added at', state.currentTime);
+            if (state.onionSkinEnabled) updateOnionSkins();
+        }
+
+        function deleteKeyframeAtCurrentTime() {
+            const index = state.keyframes.findIndex(
+                kf => Math.abs(kf.time - state.currentTime) < 0.01
+            );
+
+            if (index >= 0) {
+                saveToUndoStack();
+                state.keyframes.splice(index, 1);
+                updateTimeline();
+                updateBoneTree();
+                console.log('Keyframe deleted at', state.currentTime);
+                if (state.onionSkinEnabled) updateOnionSkins();
+            }
+        }
+
+        function hasKeyframeAtCurrentTime(boneName = null) {
+            const keyframe = state.keyframes.find(
+                kf => Math.abs(kf.time - state.currentTime) < 0.01
+            );
+
+            if (!keyframe) return false;
+            if (!boneName) return true;
+            return boneName in keyframe.bones;
+        }
+
+        function applyPoseAtTime(time) {
+            if (!state.vrm || state.keyframes.length === 0) return;
+
+            // Find surrounding keyframes
+            let prevKf = null;
+            let nextKf = null;
+
+            for (let i = 0; i < state.keyframes.length; i++) {
+                if (state.keyframes[i].time <= time) {
+                    prevKf = state.keyframes[i];
+                }
+                if (state.keyframes[i].time > time && !nextKf) {
+                    nextKf = state.keyframes[i];
+                }
+            }
+
+            if (!prevKf && !nextKf) return;
+
+            const humanBones = state.vrm.humanoid.humanBones;
+
+            if (prevKf && !nextKf) {
+                // Use last keyframe
+                Object.entries(prevKf.bones).forEach(([boneName, transform]) => {
+                    const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                    if (bone && transform.rotation) {
+                        bone.rotation.fromArray(transform.rotation);
+                    }
+                });
+            } else if (!prevKf && nextKf) {
+                // Use first keyframe
+                Object.entries(nextKf.bones).forEach(([boneName, transform]) => {
+                    const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                    if (bone && transform.rotation) {
+                        bone.rotation.fromArray(transform.rotation);
+                    }
+                });
+            } else {
+                // Interpolate between keyframes
+                const t = (time - prevKf.time) / (nextKf.time - prevKf.time);
+                const smoothT = smoothstep(t); // Ease in-out
+
+                const allBoneNames = new Set([...Object.keys(prevKf.bones), ...Object.keys(nextKf.bones)]);
+                allBoneNames.forEach(boneName => {
+                    const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                    if (!bone) return;
+
+                    const prevRot = prevKf.bones[boneName]?.rotation;
+                    const nextRot = nextKf.bones[boneName]?.rotation;
+
+                    if (!prevRot && !nextRot) return;
+                    if (!prevRot) { bone.rotation.fromArray(nextRot); return; }
+                    if (!nextRot) { bone.rotation.fromArray(prevRot); return; }
+
+                    // Quaternion interpolation for smooth rotation
+                    const q1 = new THREE.Quaternion().setFromEuler(
+                        new THREE.Euler(prevRot[0], prevRot[1], prevRot[2])
+                    );
+                    const q2 = new THREE.Quaternion().setFromEuler(
+                        new THREE.Euler(nextRot[0], nextRot[1], nextRot[2])
+                    );
+
+                    const qResult = new THREE.Quaternion().slerpQuaternions(q1, q2, smoothT);
+                    bone.rotation.setFromQuaternion(qResult);
+                });
+            }
+
+            // Apply expressions
+            if (state.vrm.expressionManager) {
+                const expressionManager = state.vrm.expressionManager;
+
+                if (prevKf && !nextKf) {
+                    Object.entries(prevKf.expressions || {}).forEach(([name, value]) => {
+                        expressionManager.setValue(name, value);
+                    });
+                } else if (!prevKf && nextKf) {
+                    Object.entries(nextKf.expressions || {}).forEach(([name, value]) => {
+                        expressionManager.setValue(name, value);
+                    });
+                } else if (prevKf && nextKf) {
+                    const t = (time - prevKf.time) / (nextKf.time - prevKf.time);
+                    const smoothT = smoothstep(t);
+                    const prevExp = prevKf.expressions || {};
+                    const nextExp = nextKf.expressions || {};
+                    const allNames = new Set([...Object.keys(prevExp), ...Object.keys(nextExp)]);
+                    allNames.forEach(name => {
+                        const a = prevExp[name] ?? 0;
+                        const b = nextExp[name] ?? 0;
+                        expressionManager.setValue(name, a + (b - a) * smoothT);
+                    });
+                }
+
+                updateBlendShapeSliders();
+            }
+
+            updateRotationInputs();
+        }
+
+        function smoothstep(t) {
+            return t * t * (3 - 2 * t);
+        }
+
+        // ==================== IK SOLVER ====================
+        const IK_CHAINS = {
+            leftHand: { upper: 'leftUpperArm', lower: 'leftLowerArm', end: 'leftHand' },
+            rightHand: { upper: 'rightUpperArm', lower: 'rightLowerArm', end: 'rightHand' },
+            leftFoot: { upper: 'leftUpperLeg', lower: 'leftLowerLeg', end: 'leftFoot' },
+            rightFoot: { upper: 'rightUpperLeg', lower: 'rightLowerLeg', end: 'rightFoot' },
+        };
+
+        function solveIK(chainName) {
+            if (!state.vrm || !state.ikEnabled) return;
+
+            const chain = IK_CHAINS[chainName];
+            if (!chain) return;
+
+            const upperBone = state.vrm.humanoid.getNormalizedBoneNode(chain.upper);
+            const lowerBone = state.vrm.humanoid.getNormalizedBoneNode(chain.lower);
+            const endBone = state.vrm.humanoid.getNormalizedBoneNode(chain.end);
+            if (!upperBone || !lowerBone || !endBone) return;
+
+            // Get world positions
+            upperBone.updateWorldMatrix(true, true);
+            lowerBone.updateWorldMatrix(true, true);
+            endBone.updateWorldMatrix(true, true);
+
+            const rootPos = new THREE.Vector3().setFromMatrixPosition(upperBone.matrixWorld);
+            const midPos = new THREE.Vector3().setFromMatrixPosition(lowerBone.matrixWorld);
+            const endPos = new THREE.Vector3().setFromMatrixPosition(endBone.matrixWorld);
+
+            // Bone lengths from rest pose
+            const upperLen = midPos.distanceTo(rootPos);
+            const lowerLen = endPos.distanceTo(midPos);
+            const totalLen = upperLen + lowerLen;
+
+            // Target is current end bone world position (user already rotated it)
+            const target = endPos.clone();
+            const toTarget = target.clone().sub(rootPos);
+            let dist = toTarget.length();
+
+            // Clamp so it doesn't hyperextend
+            dist = Math.min(dist, totalLen * 0.999);
+            toTarget.normalize().multiplyScalar(dist);
+            const clampedTarget = rootPos.clone().add(toTarget);
+
+            // 2-bone analytical solve — law of cosines
+            const cosUpper = (upperLen * upperLen + dist * dist - lowerLen * lowerLen)
+                / (2 * upperLen * dist);
+            const cosLower = (upperLen * upperLen + lowerLen * lowerLen - dist * dist)
+                / (2 * upperLen * lowerLen);
+
+            const angleUpper = Math.acos(THREE.MathUtils.clamp(cosUpper, -1, 1));
+            const angleLower = Math.acos(THREE.MathUtils.clamp(cosLower, -1, 1));
+
+            // Bend axis — cross of limb direction and a world up hint
+            const limbDir = toTarget.clone().normalize();
+            const hint = new THREE.Vector3(0, 1, 0);
+            if (Math.abs(limbDir.dot(hint)) > 0.99) hint.set(1, 0, 0); // avoid parallel
+            const bendAxis = new THREE.Vector3().crossVectors(limbDir, hint).normalize();
+
+            // Apply to upper bone
+            const upperParentInv = new THREE.Matrix4();
+            if (upperBone.parent) {
+                upperBone.parent.updateWorldMatrix(true, false);
+                upperParentInv.copy(upperBone.parent.matrixWorld).invert();
+            }
+
+            const targetQuat = new THREE.Quaternion().setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0),
+                limbDir
+            );
+            const bendQuat = new THREE.Quaternion().setFromAxisAngle(bendAxis, -angleUpper);
+            const worldQuat = bendQuat.multiply(targetQuat);
+
+            // Convert to local space
+            const parentWorldQuat = new THREE.Quaternion();
+            if (upperBone.parent) upperBone.parent.getWorldQuaternion(parentWorldQuat);
+            const localQuat = parentWorldQuat.clone().invert().multiply(worldQuat);
+            upperBone.quaternion.copy(localQuat);
+            upperBone.rotation.setFromQuaternion(upperBone.quaternion);
+
+            // Apply bend angle to lower bone (just rotate on its local X)
+            const lowerBendAngle = Math.PI - angleLower;
+            lowerBone.rotation.x = lowerBendAngle;
+        }
+
+        // ==================== ONION SKINNING ====================
+        const onionGhosts = []; // { scene, time, color }
+        const ONION_OFFSETS = [-1, 1]; // keyframes before and after current
+        const ONION_COLORS = {
+            before: new THREE.Color(0x4444ff), // blue = past
+            after: new THREE.Color(0xff4444), // red = future
+        };
+
+        function buildGhostMaterials(sourceScene, color, opacity) {
+            const ghost = sourceScene.clone();
+            ghost.traverse(node => {
+                if (node.isMesh) {
+                    node.material = new THREE.MeshBasicMaterial({
+                        color,
+                        transparent: true,
+                        opacity,
+                        depthWrite: false,
+                        side: THREE.FrontSide,
+                    });
+                }
+            });
+            return ghost;
+        }
+
+        function applyBonesFromKeyframe(ghostScene, kfBones) {
+            // We need to map bone names to the ghost scene nodes
+            // Ghost is a clone so bone node names match the original
+            ghostScene.traverse(node => {
+                if (node.isBone || node.isObject3D) {
+                    const boneName = Object.keys(kfBones).find(name => {
+                        // VRM normalized bone nodes have a specific naming pattern
+                        return node.name && node.name.includes(name);
+                    });
+                    if (boneName && kfBones[boneName]) {
+                        node.rotation.fromArray(kfBones[boneName].rotation);
+                    }
+                }
+            });
+        }
+
+        function clearOnionSkins() {
+            onionGhosts.forEach(g => scene.remove(g.scene));
+            onionGhosts.length = 0;
+        }
+
+        function updateOnionSkins() {
+            if (!state.vrm || !state.onionSkinEnabled) {
+                clearOnionSkins();
+                return;
+            }
+
+            // Find surrounding keyframes
+            const sorted = [...state.keyframes].sort((a, b) => a.time - b.time);
+            const currentIdx = sorted.findIndex(kf => Math.abs(kf.time - state.currentTime) < 0.01);
+
+            // Get prev and next keyframes relative to current
+            const targets = [];
+            if (currentIdx > 0) targets.push({ kf: sorted[currentIdx - 1], type: 'before' });
+            if (currentIdx >= 0 && currentIdx < sorted.length - 1) targets.push({ kf: sorted[currentIdx + 1], type: 'after' });
+
+            // If not exactly on a keyframe, find surrounding ones
+            if (currentIdx === -1) {
+                let prevKf = null, nextKf = null;
+                for (const kf of sorted) {
+                    if (kf.time < state.currentTime) prevKf = kf;
+                    if (kf.time > state.currentTime && !nextKf) nextKf = kf;
+                }
+                if (prevKf) targets.push({ kf: prevKf, type: 'before' });
+                if (nextKf) targets.push({ kf: nextKf, type: 'after' });
+            }
+
+            clearOnionSkins();
+
+            targets.forEach(({ kf, type }) => {
+                const color = ONION_COLORS[type];
+                const opacity = state.onionSkinOpacity;
+                const ghostScene = buildGhostMaterials(state.vrm.scene, color, opacity);
+
+                // Pose the ghost using keyframe bone data
+                applyBonesFromKeyframe(ghostScene, kf.bones);
+
+                scene.add(ghostScene);
+                onionGhosts.push({ scene: ghostScene, time: kf.time });
+            });
+        }
+
+        // ==================== TIMELINE RENDERING ====================
+        const timelineCanvas = document.getElementById('timelineCanvas');
+        const timelineCtx = timelineCanvas.getContext('2d');
+
+        function updateTimeline() {
+            const container = timelineCanvas.parentElement.parentElement;
+            const width = Math.max(container.clientWidth, 1000);
+            const height = container.clientHeight;
+
+            timelineCanvas.width = width;
+            timelineCanvas.height = height;
+
+            const ctx = timelineCtx;
+            const pixelsPerSecond = 100;
+            const totalWidth = state.duration * pixelsPerSecond;
+
+            // Background
+            ctx.fillStyle = '#252525';
+            ctx.fillRect(0, 0, width, height);
+
+            // Time markers
+            ctx.strokeStyle = '#444';
+            ctx.fillStyle = '#999';
+            ctx.font = '11px sans-serif';
+            ctx.lineWidth = 1;
+
+            for (let t = 0; t <= state.duration; t += 0.5) {
+                const x = t * pixelsPerSecond;
+                const isMajor = t % 1 === 0;
+
+                ctx.beginPath();
+                ctx.moveTo(x, height - (isMajor ? 20 : 10));
+                ctx.lineTo(x, height);
+                ctx.stroke();
+
+                if (isMajor) {
+                    ctx.fillText(`${t.toFixed(1)}s`, x + 3, height - 25);
+                }
+            }
+
+            // Keyframes
+            state.keyframes.forEach(kf => {
+                const x = kf.time * pixelsPerSecond;
+
+                ctx.fillStyle = '#27ae60';
+                ctx.beginPath();
+                ctx.moveTo(x, height - 40);
+                ctx.lineTo(x - 6, height - 50);
+                ctx.lineTo(x + 6, height - 50);
+                ctx.closePath();
+                ctx.fill();
+
+                // Keyframe line
+                ctx.strokeStyle = '#27ae60';
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height - 50);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+
+            // Playhead
+            const playheadX = state.currentTime * pixelsPerSecond;
+            ctx.strokeStyle = '#4a9eff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(playheadX, 0);
+            ctx.lineTo(playheadX, height);
+            ctx.stroke();
+
+            // Playhead handle
+            ctx.fillStyle = '#4a9eff';
+            ctx.fillRect(playheadX - 6, 0, 12, 20);
+
+            // Update time display
+            document.getElementById('playheadTime').textContent =
+                `${state.currentTime.toFixed(2)}s / ${state.duration.toFixed(2)}s`;
+        }
+
+        // Timeline interaction
+        timelineCanvas.addEventListener('mousedown', (e) => {
+            const rect = timelineCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const pixelsPerSecond = 100;
+
+            state.currentTime = Math.max(0, Math.min(state.duration, x / pixelsPerSecond));
+            applyPoseAtTime(state.currentTime);
+            if (state.onionSkinEnabled) updateOnionSkins();
+            updateTimeline();
+
+            function onMouseMove(e) {
+                const x = e.clientX - rect.left;
+                state.currentTime = Math.max(0, Math.min(state.duration, x / pixelsPerSecond));
+                applyPoseAtTime(state.currentTime);
+                updateTimeline();
+            }
+
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        // ==================== PLAYBACK ====================
+        let lastFrameTime = 0;
+
+        function updatePlayback(deltaTime) {
+            if (!state.isPlaying) return;
+
+            state.currentTime += deltaTime * state.playbackSpeed;
+
+            if (state.currentTime >= state.duration) {
+                if (state.loop) {
+                    state.currentTime = 0;
+                } else {
+                    state.currentTime = state.duration;
+                    stopPlayback();
+                }
+            }
+
+            applyPoseAtTime(state.currentTime);
+            if (state.onionSkinEnabled) updateOnionSkins();
+            updateTimeline();
+        }
+
+        function startPlayback() {
+            state.isPlaying = true;
+            document.getElementById('playBtn').textContent = '⏸️ Pause';
+            console.log('Playback started');
+        }
+
+        function stopPlayback() {
+            state.isPlaying = false;
+            document.getElementById('playBtn').textContent = '▶️ Play';
+            console.log('Playback stopped');
+        }
+
+        // ==================== POSE PRESETS ====================
+        const posePresets = {
+            tpose: {
+                hips: { rotation: [0, 0, 0] },
+                spine: { rotation: [0, 0, 0] },
+                chest: { rotation: [0, 0, 0] },
+                neck: { rotation: [0, 0, 0] },
+                head: { rotation: [0, 0, 0] },
+                leftShoulder: { rotation: [0, 0, 0] },
+                leftUpperArm: { rotation: [0, 0, -Math.PI / 2] },
+                leftLowerArm: { rotation: [0, 0, 0] },
+                rightShoulder: { rotation: [0, 0, 0] },
+                rightUpperArm: { rotation: [0, 0, Math.PI / 2] },
+                rightLowerArm: { rotation: [0, 0, 0] },
+                leftUpperLeg: { rotation: [0, 0, 0] },
+                leftLowerLeg: { rotation: [0, 0, 0] },
+                rightUpperLeg: { rotation: [0, 0, 0] },
+                rightLowerLeg: { rotation: [0, 0, 0] }
+            },
+            apose: {
+                hips: { rotation: [0, 0, 0] },
+                spine: { rotation: [0, 0, 0] },
+                leftUpperArm: { rotation: [0, 0, -0.5] },
+                rightUpperArm: { rotation: [0, 0, 0.5] }
+            },
+            idle: {
+                hips: { rotation: [0.05, 0, 0] },
+                spine: { rotation: [0.1, 0, 0] },
+                leftUpperArm: { rotation: [0.2, 0, -0.1] },
+                rightUpperArm: { rotation: [0.2, 0, 0.1] }
+            },
+            wave: {
+                rightUpperArm: { rotation: [0, 0, 1.5] },
+                rightLowerArm: { rotation: [0, 0, -1.2] }
+            },
+            sit: {
+                hips: { rotation: [0.3, 0, 0] },
+                leftUpperLeg: { rotation: [1.5, 0, 0] },
+                leftLowerLeg: { rotation: [-1.5, 0, 0] },
+                rightUpperLeg: { rotation: [1.5, 0, 0] },
+                rightLowerLeg: { rotation: [-1.5, 0, 0] }
+            },
+            jump: {
+                hips: { rotation: [0, 0, 0] },
+                leftUpperArm: { rotation: [-0.5, 0, -0.3] },
+                rightUpperArm: { rotation: [-0.5, 0, 0.3] },
+                leftUpperLeg: { rotation: [-0.3, 0, 0] },
+                rightUpperLeg: { rotation: [-0.3, 0, 0] }
+            }
+        };
+
+        function applyPreset(presetName) {
+            if (!state.vrm) return;
+
+            const preset = posePresets[presetName];
+            if (!preset) return;
+
+            saveToUndoStack();
+
+            const humanBones = state.vrm.humanoid.humanBones;
+            Object.entries(preset).forEach(([boneName, transform]) => {
+                const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                if (bone && transform.rotation) {
+                    bone.rotation.fromArray(transform.rotation);
+                }
+            });
+
+            updateRotationInputs();
+            console.log('Applied preset:', presetName);
+        }
+
+        function resetPose() {
+            if (!state.vrm) return;
+
+            saveToUndoStack();
+
+            const humanBones = state.vrm.humanoid.humanBones;
+            Object.keys(humanBones).forEach(boneName => {
+                const bone = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+                if (bone) {
+                    const initial = state.boneRotations.get(boneName);
+                    if (initial) {
+                        bone.rotation.set(initial.x, initial.y, initial.z);
+                    } else {
+                        bone.rotation.set(0, 0, 0);
+                    }
+                }
+            });
+
+            updateRotationInputs();
+            console.log('Pose reset');
+        }
+
+        function mirrorPose() {
+            if (!state.vrm) return;
+
+            saveToUndoStack();
+
+            const humanBones = state.vrm.humanoid.humanBones;
+            const pairs = [
+                ['leftUpperArm', 'rightUpperArm'],
+                ['leftLowerArm', 'rightLowerArm'],
+                ['leftHand', 'rightHand'],
+                ['leftUpperLeg', 'rightUpperLeg'],
+                ['leftLowerLeg', 'rightLowerLeg'],
+                ['leftFoot', 'rightFoot'],
+                ['leftShoulder', 'rightShoulder']
+            ];
+
+            pairs.forEach(([left, right]) => {
+                const leftBone = state.vrm.humanoid.getNormalizedBoneNode(left);
+                const rightBone = state.vrm.humanoid.getNormalizedBoneNode(right);
+
+                if (leftBone && rightBone) {
+                    const temp = leftBone.rotation.clone();
+                    leftBone.rotation.copy(rightBone.rotation);
+                    leftBone.rotation.z = -1;
+                    rightBone.rotation.copy(temp);
+                    rightBone.rotation.z = -1;
+                }
+            });
+
+            updateRotationInputs();
+            console.log('Pose mirrored');
+        }
+
+        // ==================== EXPRESSION SYSTEM ====================
+        function populateBlendShapes() {
+            if (!state.vrm) return;
+
+            const container = document.getElementById('blendShapesList');
+            container.innerHTML = '';
+
+            const expressionManager = state.vrm.expressionManager;
+            if (!expressionManager) {
+                container.innerHTML = '<div style="color: #999; font-size: 11px; text-align: center; padding: 20px;">No expressions available</div>';
+                return;
+            }
+
+            // Get all available expressions
+            const allExpressions = expressionManager.expressionMap;
+
+            if (Object.keys(allExpressions).length === 0) {
+                container.innerHTML = '<div style="color: #999; font-size: 11px; text-align: center; padding: 20px;">No expressions found in this VRM</div>';
+                return;
+            }
+
+            // Create slider for each expression
+            Object.keys(allExpressions).sort().forEach(name => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px; border-radius: 4px; background: #252525;';
+
+                const label = document.createElement('label');
+                label.textContent = name;
+                label.style.cssText = 'flex: 1; font-size: 11px; color: #ccc; cursor: pointer;';
+                label.title = name;
+
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = '0';
+                slider.max = '100';
+                slider.value = '0';
+                slider.style.cssText = 'flex: 2; cursor: pointer;';
+                slider.dataset.expressionName = name;
+
+                const valueLabel = document.createElement('span');
+                valueLabel.textContent = '0%';
+                valueLabel.style.cssText = 'min-width: 38px; font-size: 11px; text-align: right; color: #4a9eff; font-weight: bold;';
+
+                slider.addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value) / 100;
+                    valueLabel.textContent = e.target.value + '%';
+                    expressionManager.setValue(name, value);
+                    addKeyframeAtCurrentTime();
+                });
+
+                // Click label to reset this expression
+                label.addEventListener('click', () => {
+                    slider.value = 0;
+                    valueLabel.textContent = '0%';
+                    expressionManager.setValue(name, 0);
+                    addKeyframeAtCurrentTime();
+                });
+
+                row.appendChild(label);
+                row.appendChild(slider);
+                row.appendChild(valueLabel);
+                container.appendChild(row);
+            });
+        }
+
+        function applyExpressionPreset(expressionName) {
+            if (!state.vrm) return;
+
+            const expressionManager = state.vrm.expressionManager;
+            if (!expressionManager) return;
+
+            // Reset all expressions first
+            resetAllExpressions();
+
+            // Try to apply the expression with common variations
+            const variations = [
+                expressionName,
+                expressionName.toLowerCase(),
+                expressionName.toUpperCase(),
+                expressionName.charAt(0).toUpperCase() + expressionName.slice(1).toLowerCase()
+            ];
+
+            let applied = false;
+            for (const variant of variations) {
+                if (expressionManager.expressionMap[variant]) {
+                    expressionManager.setValue(variant, 1.0);
+                    applied = true;
+                    break;
+                }
+            }
+
+            // If not found, try common mappings
+            if (!applied) {
+                const mappings = {
+                    'aa': ['a', 'aa', 'A', 'Aa'],
+                    'ih': ['i', 'ih', 'I', 'Ih'],
+                    'ou': ['u', 'ou', 'U', 'Ou', 'oo'],
+                    'ee': ['e', 'ee', 'E', 'Ee'],
+                    'oh': ['o', 'oh', 'O', 'Oh']
+                };
+
+                if (mappings[expressionName]) {
+                    for (const variant of mappings[expressionName]) {
+                        if (expressionManager.expressionMap[variant]) {
+                            expressionManager.setValue(variant, 1.0);
+                            applied = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Update sliders to reflect current values
+            updateBlendShapeSliders();
+            addKeyframeAtCurrentTime();
+        }
+
+        function resetAllExpressions() {
+            if (!state.vrm) return;
+
+            const expressionManager = state.vrm.expressionManager;
+            if (!expressionManager) return;
+
+            // Reset all expressions to 0
+            Object.keys(expressionManager.expressionMap).forEach(name => {
+                expressionManager.setValue(name, 0);
+            });
+
+            // Update sliders
+            updateBlendShapeSliders();
+        }
+
+        function updateBlendShapeSliders() {
+            if (!state.vrm) return;
+
+            const expressionManager = state.vrm.expressionManager;
+            if (!expressionManager) return;
+
+            const container = document.getElementById('blendShapesList');
+            const sliders = container.querySelectorAll('input[type="range"]');
+
+            sliders.forEach(slider => {
+                const name = slider.dataset.expressionName;
+                const currentValue = expressionManager.getValue(name) || 0;
+                const percentage = Math.round(currentValue * 100);
+
+                slider.value = percentage;
+                slider.nextElementSibling.textContent = percentage + '%';
+            });
+        }
+
+        // ==================== HAND POSE SYSTEM ====================
+        const HAND_POSES = {
+            relaxed: {
+                thumbProximal: [0, 0, 0],
+                thumbIntermediate: [0, 0, 0],
+                thumbDistal: [0, 0, 0],
+                indexProximal: [0, 0, 0],
+                indexIntermediate: [0, 0, 0],
+                indexDistal: [0, 0, 0],
+                middleProximal: [0, 0, 0],
+                middleIntermediate: [0, 0, 0],
+                middleDistal: [0, 0, 0],
+                ringProximal: [0, 0, 0],
+                ringIntermediate: [0, 0, 0],
+                ringDistal: [0, 0, 0],
+                littleProximal: [0, 0, 0],
+                littleIntermediate: [0, 0, 0],
+                littleDistal: [0, 0, 0]
+            },
+            fist: {
+                thumbProximal: [0.0, -1.5, -0.2],
+                thumbIntermediate: [0.0, 0.4, -0.6],
+                thumbDistal: [0.0, -2.0, 0.0],
+                indexProximal: [0, 0, -1.5],
+                indexIntermediate: [0, 0, -1.2],
+                indexDistal: [0, 0, -0.8],
+                middleProximal: [0, 0, -1.5],
+                middleIntermediate: [0, 0, -1.2],
+                middleDistal: [0, 0, -0.8],
+                ringProximal: [0, 0, -1.5],
+                ringIntermediate: [0, 0, -1.2],
+                ringDistal: [0, 0, -0.8],
+                littleProximal: [0, 0, -1.5],
+                littleIntermediate: [0, 0, -1.2],
+                littleDistal: [0, 0, -0.8]
+            },
+            point: {
+                thumbProximal: [0.2, 0, -0.3],
+                thumbIntermediate: [0, 0, -0.5],
+                thumbDistal: [0, 0, -0.3],
+                indexProximal: [0, 0, -0.2],
+                indexIntermediate: [0, 0, 0],
+                indexDistal: [0, 0, 0],
+                middleProximal: [0, 0, -1.5],
+                middleIntermediate: [0, 0, -1.2],
+                middleDistal: [0, 0, -0.8],
+                ringProximal: [0, 0, -1.5],
+                ringIntermediate: [0, 0, -1.2],
+                ringDistal: [0, 0, -0.8],
+                littleProximal: [0, 0, -1.5],
+                littleIntermediate: [0, 0, -1.2],
+                littleDistal: [0, 0, -0.8]
+            },
+            victory: {
+                thumbProximal: [0.2, 0, -0.3],
+                thumbIntermediate: [0, 0, -0.5],
+                thumbDistal: [0, 0, -0.3],
+                indexProximal: [0, 0, -0.2],
+                indexIntermediate: [0, 0, 0],
+                indexDistal: [0, 0, 0],
+                middleProximal: [0, 0, -0.2],
+                middleIntermediate: [0, 0, 0],
+                middleDistal: [0, 0, 0],
+                ringProximal: [0, 0, -1.5],
+                ringIntermediate: [0, 0, -1.2],
+                ringDistal: [0, 0, -0.8],
+                littleProximal: [0, 0, -1.5],
+                littleIntermediate: [0, 0, -1.2],
+                littleDistal: [0, 0, -0.8]
+            },
+            thumbsUp: {
+                thumbProximal: [-0.5, 0, 0],
+                thumbIntermediate: [-0.2, 0, 0],
+                thumbDistal: [0, 0, 0],
+                indexProximal: [0, 0, -1.5],
+                indexIntermediate: [0, 0, -1.2],
+                indexDistal: [0, 0, -0.8],
+                middleProximal: [0, 0, -1.5],
+                middleIntermediate: [0, 0, -1.2],
+                middleDistal: [0, 0, -0.8],
+                ringProximal: [0, 0, -1.5],
+                ringIntermediate: [0, 0, -1.2],
+                ringDistal: [0, 0, -0.8],
+                littleProximal: [0, 0, -1.5],
+                littleIntermediate: [0, 0, -1.2],
+                littleDistal: [0, 0, -0.8]
+            }
+        };
+
+        function applyHandPose(hand, poseName) {
+            if (!state.vrm) return;
+
+            const pose = HAND_POSES[poseName];
+            if (!pose) return;
+
+            const fingers = ['thumb', 'index', 'middle', 'ring', 'little'];
+            const segments = ['Proximal', 'Intermediate', 'Distal'];
+
+            fingers.forEach(finger => {
+                segments.forEach(segment => {
+                    const boneName = hand + finger.charAt(0).toUpperCase() + finger.slice(1) + segment;
+                    const node = state.vrm.humanoid.getNormalizedBoneNode(boneName);
+
+                    if (node) {
+                        const key = finger + segment;
+                        let [x, y, z] = pose[key];
+
+                        // Logic Mirroring:
+                        // Biasanya sumbu Y dan Z perlu dibalik untuk tangan kiri 
+                        // agar gerakan menekuknya simetris dengan tangan kanan.
+                        if (hand === 'left') {
+                            y = -y;
+                            z = -z;
+                        }
+
+                        node.rotation.set(x, y, z);
+                    }
+                });
+            });
+            addKeyframeAtCurrentTime();
+        }
+
+        window.applyHandPose = applyHandPose;
+
+        // ==================== UNDO/REDO ====================
+        function saveToUndoStack() {
+            if (!state.vrm) return;
+
+            const snapshot = {
+                keyframes: JSON.parse(JSON.stringify(state.keyframes)),
+                currentTime: state.currentTime
+            };
+
+            state.undoStack.push(snapshot);
+            if (state.undoStack.length > 50) {
+                state.undoStack.shift();
+            }
+            state.redoStack = [];
+
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (state.undoStack.length === 0) return;
+
+            const current = {
+                keyframes: JSON.parse(JSON.stringify(state.keyframes)),
+                currentTime: state.currentTime
+            };
+            state.redoStack.push(current);
+
+            const snapshot = state.undoStack.pop();
+            state.keyframes = snapshot.keyframes;
+            state.currentTime = snapshot.currentTime;
+
+            applyPoseAtTime(state.currentTime);
+            updateTimeline();
+            updateBoneTree();
+            updateUndoRedoButtons();
+            console.log('Undo');
+        }
+
+        function redo() {
+            if (state.redoStack.length === 0) return;
+
+            const current = {
+                keyframes: JSON.parse(JSON.stringify(state.keyframes)),
+                currentTime: state.currentTime
+            };
+            state.undoStack.push(current);
+
+            const snapshot = state.redoStack.pop();
+            state.keyframes = snapshot.keyframes;
+            state.currentTime = snapshot.currentTime;
+
+            applyPoseAtTime(state.currentTime);
+            updateTimeline();
+            updateBoneTree();
+            updateUndoRedoButtons();
+            console.log('Redo');
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('undoBtn').disabled = state.undoStack.length === 0;
+            document.getElementById('redoBtn').disabled = state.redoStack.length === 0;
+        }
+
+        // ==================== CAMERA PRESETS ====================
+        function setCameraPreset(preset) {
+            const distance = 2.5;
+            const target = new THREE.Vector3(0, 1, 0);
+
+            switch (preset) {
+                case 'front':
+                    camera.position.set(0, 1.4, distance);
+                    break;
+                case 'side':
+                    camera.position.set(distance, 1.4, 0);
+                    break;
+                case '3quarter':
+                    camera.position.set(distance * 0.7, 1.4, distance * 0.7);
+                    break;
+                case 'top':
+                    camera.position.set(0, distance * 1.5, 0.5);
+                    break;
+            }
+
+            controls.target.copy(target);
+            controls.update();
+        }
+
+        // ==================== CODE EXPORT ====================
+        function exportCode(format) {
+            // Validate keyframes before export
+            if (state.keyframes.length === 0) {
+                return '// No keyframes to export. Please add some keyframes first.';
+            }
+
+            const animation = {
+                name: 'animation',
+                version: '1.0',
+                duration: state.duration,
+                fps: state.fps,
+                totalKeyframes: state.keyframes.length,
+                keyframes: state.keyframes.map(kf => ({
+                    time: parseFloat(kf.time.toFixed(3)), // Round for cleaner JSON
+                    bones: kf.bones,
+                    expressions: kf.expressions || {}
+                })),
+                metadata: {
+                    exportDate: new Date().toISOString(),
+                    totalBones: Object.keys(state.keyframes[0]?.bones || {}).length,
+                    boneNames: Object.keys(state.keyframes[0]?.bones || {})
+                }
+            };
+
+            let code = '';
+
+            if (format === 'threejs') {
+                code = `// THREE.VRM Animation Code
+import * as THREE from 'three';
+import { VRM } from '@pixiv/three-vrm';
+
+// Animation data
+const animationData = ${JSON.stringify(animation, null, 2)};
+
+// Apply pose to VRM
+function applyPose(vrm, poseData, expressionData) {
+    if (!vrm || !vrm.humanoid) {
+        console.warn('VRM or humanoid not available');
+        return;
+    }
+
+    if (!poseData || typeof poseData !== 'object') {
+        console.warn('Invalid pose data');
+        return;
+    }
+    
+    Object.entries(poseData).forEach(([boneName, transform]) => {
+        if (!transform || !transform.rotation) {
+            console.warn(\`Missing rotation data for bone: \${boneName}\`);
+            return;
+        }
+        
+        const bone = vrm.humanoid.getNormalizedBoneNode(boneName);
+        if (bone) {
+            // Validate rotation array
+            if (Array.isArray(transform.rotation) && transform.rotation.length === 3) {
+                bone.rotation.fromArray(transform.rotation);
+            } else {
+                console.warn(\`Invalid rotation format for bone: \${boneName}\`);
+            }
+        }
+    });
+
+    if (expressionData && vrm.expressionManager) {
+        Object.entries(expressionData).forEach(([name, value]) => {
+            vrm.expressionManager.setValue(name, value);
+        });
+    }
+}
+
+// Interpolate between keyframes
+function getInterpolatedPose(animationData, time) {
+    const keyframes = animationData.keyframes;
+    
+    if (!keyframes || keyframes.length === 0) {
+        console.warn('No keyframes in animation data');
+        return null;
+    }
+    
+    if (keyframes.length === 1) return { bones: keyframes[0].bones, expressions: keyframes[0].expressions || {} };
+    if (time <= keyframes[0].time) return { bones: keyframes[0].bones, expressions: keyframes[0].expressions || {} };
+    if (time >= keyframes[keyframes.length - 1].time) return { bones: keyframes[keyframes.length - 1].bones, expressions: keyframes[keyframes.length - 1].expressions || {} };
+    
+    let prevKf = keyframes[0];
+    let nextKf = keyframes[keyframes.length - 1];
+    
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
+            prevKf = keyframes[i];
+            nextKf = keyframes[i + 1];
+            break;
+        }
+    }
+    
+    const timeDiff = nextKf.time - prevKf.time;
+    if (timeDiff === 0) return { bones: prevKf.bones, expressions: prevKf.expressions || {} };
+    
+    const t = (time - prevKf.time) / timeDiff;
+    const smoothT = t * t * (3 - 2 * t); // Smoothstep
+    
+    const interpolatedBones = {};
+    
+    Object.keys(prevKf.bones).forEach(boneName => {
+        const prevRot = prevKf.bones[boneName].rotation;
+        const nextRot = nextKf.bones[boneName]?.rotation || prevRot;
+        
+        if (!Array.isArray(prevRot) || !Array.isArray(nextRot)) {
+            console.warn(\`Invalid rotation data for bone: \${boneName}\`);
+            return;
+        }
+        
+        const q1 = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(prevRot[0], prevRot[1], prevRot[2])
+        );
+        const q2 = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(nextRot[0], nextRot[1], nextRot[2])
+        );
+        
+        const qResult = new THREE.Quaternion().slerpQuaternions(q1, q2, smoothT);
+        const euler = new THREE.Euler().setFromQuaternion(qResult);
+        
+        interpolatedBones[boneName] = {
+            rotation: [euler.x, euler.y, euler.z]
+        };
+    });
+    
+    const interpolatedExpressions = {};
+    const prevExp = prevKf.expressions || {};
+    const nextExp = nextKf.expressions || {};
+    Object.keys(prevExp).forEach(name => {
+        const a = prevExp[name] || 0;
+        const b = nextExp[name] ?? a;
+        interpolatedExpressions[name] = a + (b - a) * smoothT;
+    });
+    return { bones: interpolatedBones, expressions: interpolatedExpressions };
+}
+
+// Play animation
+function playAnimation(vrm, animationData, loop = true) {
+    let startTime = Date.now();
+    
+    function animate() {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const time = elapsed % animationData.duration;
+        
+        const result = getInterpolatedPose(animationData, time);
+        if (result) { applyPose(vrm, result.bones, result.expressions); }
+        
+        if (loop || elapsed < animationData.duration) {
+            requestAnimationFrame(animate);
+        }
+    }
+    
+    animate();
+}
+
+// Usage example:
+// playAnimation(myVRM, animationData, true);
+`;
+            } else if (format === 'react') {
+                code = `// React Three Fiber VRM Animation Component
+import { useEffect, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+
+// Animation data
+const animationData = ${JSON.stringify(animation, null, 2)};
+
+function VRMAnimator({ vrm }) {
+    const timeRef = useRef(0);
+    
+    useFrame((state, delta) => {
+        if (!vrm) return;
+        
+        timeRef.current += delta;
+        const time = timeRef.current % animationData.duration;
+        
+        const result = getInterpolatedPose(animationData, time);
+        if (result) { applyPose(vrm, result.bones, result.expressions); }
+    });
+    
+    return null;
+}
+
+function applyPose(vrm, poseData, expressionData) {
+    if (!vrm || !vrm.humanoid) {
+        console.warn('VRM or humanoid not available');
+        return;
+    }
+    
+    if (!poseData || typeof poseData !== 'object') {
+        console.warn('Invalid pose data');
+        return;
+    }
+    
+    Object.entries(poseData).forEach(([boneName, transform]) => {
+        if (!transform || !transform.rotation) {
+            console.warn(\`Missing rotation data for bone: \${boneName}\`);
+            return;
+        }
+        
+        const bone = vrm.humanoid.getNormalizedBoneNode(boneName);
+        if (bone) {
+            // Validate rotation array
+            if (Array.isArray(transform.rotation) && transform.rotation.length === 3) {
+                bone.rotation.fromArray(transform.rotation);
+            } else {
+                console.warn(\`Invalid rotation format for bone: \${boneName}\`);
+            }
+        }
+    });
+
+    if (expressionData && vrm.expressionManager) {
+        Object.entries(expressionData).forEach(([name, value]) => {
+            vrm.expressionManager.setValue(name, value);
+        });
+    }
+}
+
+function getInterpolatedPose(animationData, time) {
+    // Same interpolation logic as Three.js version
+    const keyframes = animationData.keyframes;
+    
+    if (!keyframes || keyframes.length === 0) {
+        console.warn('No keyframes in animation data');
+        return null;
+    }
+    
+    if (keyframes.length === 1) return { bones: keyframes[0].bones, expressions: keyframes[0].expressions || {} };
+    if (time <= keyframes[0].time) return { bones: keyframes[0].bones, expressions: keyframes[0].expressions || {} };
+    if (time >= keyframes[keyframes.length - 1].time) return { bones: keyframes[keyframes.length - 1].bones, expressions: keyframes[keyframes.length - 1].expressions || {} };
+    
+    let prevKf = keyframes[0];
+    let nextKf = keyframes[keyframes.length - 1];
+    
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
+            prevKf = keyframes[i];
+            nextKf = keyframes[i + 1];
+            break;
+        }
+    }
+    
+    const timeDiff = nextKf.time - prevKf.time;
+    if (timeDiff === 0) return { bones: prevKf.bones, expressions: prevKf.expressions || {} };
+    
+    const t = (time - prevKf.time) / timeDiff;
+    const smoothT = t * t * (3 - 2 * t);
+    
+    const interpolatedBones = {};
+    
+    Object.keys(prevKf.bones).forEach(boneName => {
+        const prevRot = prevKf.bones[boneName].rotation;
+        const nextRot = nextKf.bones[boneName]?.rotation || prevRot;
+        
+        if (!Array.isArray(prevRot) || !Array.isArray(nextRot)) {
+            console.warn(\`Invalid rotation data for bone: \${boneName}\`);
+            return;
+        }
+        
+        const q1 = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(prevRot[0], prevRot[1], prevRot[2])
+        );
+        const q2 = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(nextRot[0], nextRot[1], nextRot[2])
+        );
+        
+        const qResult = new THREE.Quaternion().slerpQuaternions(q1, q2, smoothT);
+        const euler = new THREE.Euler().setFromQuaternion(qResult);
+        
+        interpolatedBones[boneName] = {
+            rotation: [euler.x, euler.y, euler.z]
+        };
+    });
+    
+    const interpolatedExpressions = {};
+    const prevExp = prevKf.expressions || {};
+    const nextExp = nextKf.expressions || {};
+    Object.keys(prevExp).forEach(name => {
+        const a = prevExp[name] || 0;
+        const b = nextExp[name] ?? a;
+        interpolatedExpressions[name] = a + (b - a) * smoothT;
+    });
+    return { bones: interpolatedBones, expressions: interpolatedExpressions };
+}
+
+export default VRMAnimator;
+
+// Usage:
+// <Canvas>
+//   <VRMAnimator vrm={myVRM} />
+// </Canvas>
+`;
+            } else if (format === 'json') {
+                code = JSON.stringify(animation, null, 2);
+            }
+
+            return code;
+        }
+
+        // ==================== UI EVENT HANDLERS ====================
+        document.getElementById('loadVrmBtn').addEventListener('click', () => {
+            document.getElementById('vrmFileInput').click();
+        });
+
+        document.getElementById('vrmFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadVRM(file);
+            }
+        });
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (state.isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            stopPlayback();
+            state.currentTime = 0;
+            applyPoseAtTime(state.currentTime);
+            updateTimeline();
+        });
+
+        document.getElementById('prevFrameBtn').addEventListener('click', () => {
+            const frameTime = 1 / state.fps;
+            state.currentTime = Math.max(0, state.currentTime - frameTime);
+            applyPoseAtTime(state.currentTime);
+            updateTimeline();
+        });
+
+        document.getElementById('nextFrameBtn').addEventListener('click', () => {
+            const frameTime = 1 / state.fps;
+            state.currentTime = Math.min(state.duration, state.currentTime + frameTime);
+            applyPoseAtTime(state.currentTime);
+            updateTimeline();
+        });
+
+        document.getElementById('addKeyframeBtn').addEventListener('click', () => {
+            addKeyframeAtCurrentTime();
+        });
+
+        document.getElementById('deleteKeyframeBtn').addEventListener('click', () => {
+            deleteKeyframeAtCurrentTime();
+        });
+
+        document.getElementById('resetPoseBtn').addEventListener('click', () => {
+            resetPose();
+        });
+
+        document.getElementById('mirrorPoseBtn').addEventListener('click', () => {
+            mirrorPose();
+        });
+
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            undo();
+        });
+
+        document.getElementById('redoBtn').addEventListener('click', () => {
+            redo();
+        });
+
+        ['rotX', 'rotY', 'rotZ'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if (!state.selectedBone || !state.vrm) return;
+                const node = state.vrm.humanoid.getNormalizedBoneNode(state.selectedBone);
+                if (!node) return;
+                const axis = id.replace('rot', '').toLowerCase();
+                const value = THREE.MathUtils.degToRad(parseFloat(e.target.value) || 0);
+                node.rotation[axis] = value;
+
+                // If IK enabled and this is an end bone, solve the chain
+                if (state.ikEnabled && IK_CHAINS[state.selectedBone]) {
+                    solveIK(state.selectedBone);
+                    updateRotationInputs();
+                }
+
+                // Auto-save to current keyframe so timeline scrub doesn't wipe it
+                const existing = state.keyframes.find(
+                    kf => Math.abs(kf.time - state.currentTime) < 0.01
+                );
+                if (existing && existing.bones[state.selectedBone]) {
+                    existing.bones[state.selectedBone].rotation = [
+                        node.rotation.x,
+                        node.rotation.y,
+                        node.rotation.z
+                    ];
+                }
+            });
+        });
+
+        // Speed slider
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            state.playbackSpeed = parseInt(e.target.value) / 100;
+            document.getElementById('speedValue').textContent = e.target.value + '%';
+        });
+
+        // IK Toggle
+        document.getElementById('ikToggle').addEventListener('change', (e) => {
+            state.ikEnabled = e.target.checked;
+        });
+
+        // Onion Skin Toggle
+        document.getElementById('onionSkinToggle').addEventListener('change', (e) => {
+            state.onionSkinEnabled = e.target.checked;
+            if (!e.target.checked) clearOnionSkins();
+        });
+
+        // Onion Skin Opacity
+        document.getElementById('onionSkinOpacity').addEventListener('input', (e) => {
+            state.onionSkinOpacity = parseInt(e.target.value) / 100;
+            updateOnionSkins();
+        });
+
+        // Loop toggle
+        document.getElementById('loopToggle').addEventListener('change', (e) => {
+            state.loop = e.target.checked;
+        });
+
+        // Camera presets
+        document.getElementById('camFront').addEventListener('click', () => setCameraPreset('front'));
+        document.getElementById('camSide').addEventListener('click', () => setCameraPreset('side'));
+        document.getElementById('cam3Quarter').addEventListener('click', () => setCameraPreset('3quarter'));
+        document.getElementById('camTop').addEventListener('click', () => setCameraPreset('top'));
+
+        // Pose presets
+        document.querySelectorAll('.preset-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const preset = el.dataset.preset;
+                applyPreset(preset);
+            });
+        });
+
+        // Export modal
+        document.getElementById('exportCodeBtn').addEventListener('click', () => {
+            document.getElementById('exportModal').classList.remove('hidden');
+            showExportTab('threejs');
+        });
+
+        document.getElementById('closeExportModal').addEventListener('click', () => {
+            document.getElementById('exportModal').classList.add('hidden');
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showExportTab(btn.dataset.tab);
+            });
+        });
+
+        function showExportTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+            const code = exportCode(tab);
+            document.getElementById('codeOutput').textContent = code;
+        }
+
+        document.getElementById('copyCodeBtn').addEventListener('click', async () => {
+            const code = document.getElementById('codeOutput').textContent;
+            try {
+                await navigator.clipboard.writeText(code);
+                const btn = document.getElementById('copyCodeBtn');
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = '📋 Copy to Clipboard';
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy to clipboard');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            switch (e.key) {
+                case ' ':
+                    e.preventDefault();
+                    if (state.isPlaying) {
+                        stopPlayback();
+                    } else {
+                        startPlayback();
+                    }
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    document.getElementById('prevFrameBtn').click();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    document.getElementById('nextFrameBtn').click();
+                    break;
+                case 'k':
+                case 'K':
+                    e.preventDefault();
+                    addKeyframeAtCurrentTime();
+                    break;
+                case 'Delete':
+                    e.preventDefault();
+                    deleteKeyframeAtCurrentTime();
+                    break;
+            }
+
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'z':
+                    case 'Z':
+                        e.preventDefault();
+                        undo();
+                        break;
+                    case 'y':
+                    case 'Y':
+                        e.preventDefault();
+                        redo();
+                        break;
+                }
+            }
+        });
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function enableControls() {
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('prevFrameBtn').disabled = false;
+            document.getElementById('nextFrameBtn').disabled = false;
+            document.getElementById('addKeyframeBtn').disabled = false;
+            document.getElementById('deleteKeyframeBtn').disabled = false;
+            document.getElementById('resetPoseBtn').disabled = false;
+            document.getElementById('mirrorPoseBtn').disabled = false;
+            document.getElementById('exportCodeBtn').disabled = false;
+        }
+
+        // ==================== ANIMATION LOOP ====================
+        let lastTime = performance.now();
+        let fpsFrames = 0;
+        let fpsTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // FPS counter
+            fpsFrames++;
+            fpsTime += deltaTime;
+            if (fpsTime >= 1.0) {
+                document.getElementById('fpsCounter').textContent = `FPS: ${fpsFrames}`;
+                fpsFrames = 0;
+                fpsTime = 0;
+            }
+
+            // Update playback
+            updatePlayback(deltaTime);
+
+            // Update VRM
+            if (state.vrm) {
+                if (state.vrm.lookAt && document.getElementById('lookAtToggle').checked) {
+                    const camPos = new THREE.Vector3();
+                    camera.getWorldPosition(camPos);
+                    state.vrm.lookAt.target = null;
+                    state.vrm.lookAt.lookAt(camPos);
+                }
+                state.vrm.update(deltaTime);
+            }
+
+            // Update controls
+            controls.update();
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(width, height);
+            updateTimeline();
+        });
+
+        // Initial timeline render
+        updateTimeline();
+
+        // Start animation loop
+        animate();
+
+        console.log('VRM Animator initialized!');
+        console.log('Load a VRM file to get started.');
+
+        // ==================== SPRITESHEET EXPORTER ====================
+        let sheetFrames = [];
+        let sheetRecording = false;
+        let lastCaptureTime = 0;
+        let FRAME_INTERVAL = 1000 / 30;
+
+        function updateSheetButtons() {
+            const count = sheetFrames.length;
+            const exportBtn = document.getElementById('exportSheetBtn');
+            const clearBtn = document.getElementById('clearFramesBtn');
+            exportBtn.textContent = `⬇️ Export Sheet (${count})`;
+            exportBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+            clearBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+            clearBtn.disabled = count === 0;
+            exportBtn.disabled = count === 0;
+        }
+
+        const _origEnableControls = enableControls;
+        enableControls = function () {
+            _origEnableControls();
+            document.getElementById('autoRecordBtn').disabled = false;
+        };
+
+        document.getElementById('autoRecordBtn').addEventListener('click', () => {
+            if (sheetRecording) {
+                sheetRecording = false;
+                document.getElementById('autoRecordBtn').textContent = '⏺ Auto Record';
+                document.getElementById('autoRecordBtn').style.background = '';
+            } else {
+                const TARGET_FPS = parseInt(document.getElementById('captureFps').value);
+                FRAME_INTERVAL = 1000 / TARGET_FPS;
+                sheetFrames = [];
+                lastCaptureTime = 0;
+                updateSheetButtons();
+                sheetRecording = true;
+                document.getElementById('autoRecordBtn').textContent = '⏹ Stop';
+                document.getElementById('autoRecordBtn').style.background = '#e74c3c';
+                if (!state.isPlaying) startPlayback();
+                requestAnimationFrame(captureLoop);
+            }
+        });
+
+        function captureLoop(timestamp) {
+            if (!sheetRecording || !state.isPlaying) {
+                if (sheetRecording) {
+                    sheetRecording = false;
+                    document.getElementById('autoRecordBtn').textContent = '⏺ Auto Record';
+                    document.getElementById('autoRecordBtn').style.background = '';
+                    updateSheetButtons();
+                }
+                return;
+            }
+            if (timestamp - lastCaptureTime >= FRAME_INTERVAL) {
+                sheetFrames.push(canvas.toDataURL('image/png'));
+                lastCaptureTime = timestamp;
+                updateSheetButtons();
+            }
+            requestAnimationFrame(captureLoop);
+        }
+
+        // Stop recording when playback stops
+        const _origStopPlayback = stopPlayback;
+        stopPlayback = function () {
+            _origStopPlayback();
+            if (sheetRecording) {
+                sheetRecording = false;
+                document.getElementById('autoRecordBtn').textContent = '⏺ Auto Record';
+                document.getElementById('autoRecordBtn').style.background = '';
+                updateSheetButtons();
+            }
+        };
+
+        document.getElementById('clearFramesBtn').addEventListener('click', () => {
+            sheetFrames = [];
+            updateSheetButtons();
+        });
+
+        document.getElementById('exportSheetBtn').addEventListener('click', async () => {
+            if (sheetFrames.length === 0) return;
+            const btn = document.getElementById('exportSheetBtn');
+            btn.textContent = '⏳ Building...';
+            btn.disabled = true;
+
+            const removeBackground = document.getElementById('chromaKeyToggle').checked;
+
+            const bitmaps = await Promise.all(sheetFrames.map(src => {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.src = src;
+                });
+            }));
+
+            const frameW = bitmaps[0].width;
+            const frameH = bitmaps[0].height;
+            const cols = Math.ceil(Math.sqrt(sheetFrames.length));
+            const rows = Math.ceil(sheetFrames.length / cols);
+
+            const sheetCanvas = document.createElement('canvas');
+            sheetCanvas.width = frameW * cols;
+            sheetCanvas.height = frameH * rows;
+            const ctx = sheetCanvas.getContext('2d');
+
+            // Sample bg color from first pixel of first frame
+            const sampleCanvas = document.createElement('canvas');
+            sampleCanvas.width = frameW;
+            sampleCanvas.height = frameH;
+            const sampleCtx = sampleCanvas.getContext('2d');
+            sampleCtx.drawImage(bitmaps[0], 0, 0);
+            const pixel = sampleCtx.getImageData(0, 0, 1, 1).data;
+            const bgR = pixel[0], bgG = pixel[1], bgB = pixel[2];
+
+            for (let i = 0; i < bitmaps.length; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const dx = col * frameW;
+                const dy = row * frameH;
+
+                if (removeBackground) {
+                    // Draw frame to temp canvas and remove bg color
+                    const tmp = document.createElement('canvas');
+                    tmp.width = frameW; tmp.height = frameH;
+                    const tctx = tmp.getContext('2d');
+                    tctx.drawImage(bitmaps[i], 0, 0);
+                    const imgData = tctx.getImageData(0, 0, frameW, frameH);
+                    const d = imgData.data;
+                    const tolerance = 60;
+                    for (let p = 0; p < d.length; p += 4) {
+                        const dr = Math.abs(d[p] - bgR);
+                        const dg = Math.abs(d[p + 1] - bgG);
+                        const db = Math.abs(d[p + 2] - bgB);
+                        if (dr + dg + db < tolerance * 3) d[p + 3] = 0;
+                    }
+                    tctx.putImageData(imgData, 0, 0);
+                    ctx.drawImage(tmp, dx, dy);
+                } else {
+                    ctx.drawImage(bitmaps[i], dx, dy);
+                }
+            }
+
+            sheetCanvas.toBlob(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `spritesheet-${cols}x${rows}-${Date.now()}.png`;
+                a.click();
+                btn.textContent = `⬇️ Export Sheet (${sheetFrames.length})`;
+                btn.disabled = false;
+            }, 'image/png');
+        });
+    </script>
+</body>
+
+</html>
